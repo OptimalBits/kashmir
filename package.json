@@ -1,0 +1,25 @@
+{
+  "name": "kashmir",
+  "version": "1.0.0",
+  "description": "Cache optimised for medium to large files",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OptimalBits/kashmir.git"
+  },
+  "keywords": [
+    "cache"
+  ],
+  "author": "Manuel Astudillo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OptimalBits/kashmir/issues"
+  },
+  "homepage": "https://github.com/OptimalBits/kashmir#readme",
+  "dependencies": {
+    "bluebird": "^3.5.1"
+  }
+}
