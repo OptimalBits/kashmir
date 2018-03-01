@@ -59,7 +59,6 @@ Cache.prototype.open = function() {
   ));
 };
 
-
 function createDirIfNeeded(dirPath) {
   return fs
     .statAsync(dirPath)
@@ -110,11 +109,15 @@ Cache.prototype.set = function(key, stream, size) {
 
   const totalSize = this.currentSize + size;
   if (this.opts.maxSize < totalSize) {
-    return this.evictFiles(totalSize - this.opts.maxSize).then(evictedSize => {
-      if (evictedSize) {
-        return cacheFile(key, stream, size);
-      }
-    });
+    if( this.opts.maxSize >= size) {
+      return this.evictFiles(totalSize - this.opts.maxSize).then(evictedEnough => {
+        if (evictedEnough) {
+          return cacheFile(key, stream, size);
+        }
+      });
+    } else {
+      return Promise.resolve(false);
+    }
   } else {
     return cacheFile(key, stream, size);
   }

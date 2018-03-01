@@ -2,13 +2,14 @@ const Cache = require("../src/cache");
 const expect = require("chai").expect;
 const fs = require("fs");
 const Promise = require('bluebird');
+const _ = require('lodash');
 
 const stream = require("stream");
 
 const ONE_MEGABYTE = 1024 * 1024;
 const CACHE_001 = __dirname + "/scrap/cache001";
 
-const files = [
+const filenames = [
   __dirname + "/fixtures/file1.png",
   __dirname + "/fixtures/file2.jpg",
   __dirname + "/fixtures/file3.png",
@@ -65,13 +66,8 @@ describe("Cache", function() {
     });
 
     it("should evict an item if needed", function() {
-      const file1 = prepareInput(files[0]);
-      const file2 = prepareInput(files[1]);
-      const file3 = prepareInput(files[2]);
-      const file4 = prepareInput(files[3]);
-      const file5 = prepareInput(files[4]);
-
-      const size = file1.size + file2.size + file3.size + file4.size
+      const files = _.map(filenames.slice(0, 4), prepareInput);
+      const size = _.reduce(files, (sum, file) => sum + file.size, 0);
 
       const cache = new Cache(CACHE_001, { maxSize: size, ttl: 0 });
 
@@ -79,28 +75,78 @@ describe("Cache", function() {
   
         expect(cache.files).to.have.lengthOf(0);
 
-        return Promise.join(
-          cache.set(file1.filename, file1.stream, file1.size),
-          cache.set(file2.filename, file2.stream, file2.size),
-          cache.set(file3.filename, file3.stream, file3.size),
-          cache.set(file4.filename, file4.stream, file4.size)
-        ).spread((cached1, cached2, cached3, cached4) => {
-          expect(cached1).to.be.equal(true);
-          expect(cached2).to.be.equal(true);
-          expect(cached3).to.be.equal(true);
-          expect(cached4).to.be.equal(true);
-
+        return Promise.map(files, (file) => cache.set(file.filename, file.stream, file.size)
+        ).then((cached) => {
+          _.each(cached, (c) => {
+            expect(c).to.be.equal(true);
+          });
+          
           expect(cache.files).to.have.lengthOf(4);
           expect(cache.currentSize).to.be.equal(size);
 
-  
-          return cache.get(file1.filename).then(readStream => {
-            expect(readStream instanceof stream.Readable).to.be.equal(true);
-          })
-          .then( () => cache.set(file5.filename, file5.stream, file5.size))
+          const file = prepareInput(filenames[4]);
+          return cache.set(file.filename, file.stream, file.size)
           .then( () => {
             expect(cache.files).to.have.lengthOf(4);
             expect(cache.currentSize).to.be.lessThan(size);
+          });
+        });
+      });
+    });
+
+    it("should not cache if not enough room", function() {
+      const files = _.map(filenames.slice(0, 2), prepareInput);
+      const size = _.reduce(files, (sum, file) => sum + file.size, 0);
+
+      const cache = new Cache(CACHE_001, { maxSize: size, ttl: 0 });
+
+      return cache.open().then(() => {
+  
+        expect(cache.files).to.have.lengthOf(0);
+
+        return Promise.map(files, (file) => cache.set(file.filename, file.stream, file.size)
+        ).then((cached) => {
+          _.each(cached, (c) => {
+            expect(c).to.be.equal(true);
+          });
+          
+          expect(cache.files).to.have.lengthOf(2);
+          expect(cache.currentSize).to.be.equal(size);
+
+          const file = prepareInput(filenames[2]);
+          return cache.set(file.filename, file.stream, file.size)
+          .then( () => {
+            expect(cache.files).to.have.lengthOf(2);
+            expect(cache.currentSize).to.be.equal(size);
+          });
+        });
+      });
+    });
+
+    it("should not cache if ttl not expired", function() {
+      const files = _.map(filenames.slice(0, 3), prepareInput);
+      const size = _.reduce(files, (sum, file) => sum + file.size, 0);
+
+      const cache = new Cache(CACHE_001, { maxSize: size, ttl: 1000 * 60});
+
+      return cache.open().then(() => {
+  
+        expect(cache.files).to.have.lengthOf(0);
+
+        return Promise.map(files, (file) => cache.set(file.filename, file.stream, file.size)
+        ).then((cached) => {
+          _.each(cached, (c) => {
+            expect(c).to.be.equal(true);
+          });
+          
+          expect(cache.files).to.have.lengthOf(3);
+          expect(cache.currentSize).to.be.equal(size);
+
+          const file = prepareInput(filenames[3]);
+          return cache.set(file.filename, file.stream, file.size)
+          .then( () => {
+            expect(cache.files).to.have.lengthOf(3);
+            expect(cache.currentSize).to.be.equal(size);
           });
         });
       });
