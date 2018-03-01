@@ -1,6 +1,6 @@
 {
   "name": "kashmir",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cache optimised for medium to large files",
   "main": "index.js",
   "scripts": {
