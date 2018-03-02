@@ -55,12 +55,41 @@ describe("Cache", function() {
         return cache.set(filename, readStream, size).then(function(cached) {
           expect(cached).to.be.equal(true);
           expect(cache.files).to.have.lengthOf(1);
-          expect(cache.files[0].stats.size).to.be.equal(847509);
-          expect(cache.currentSize).to.be.equal(847509);
+          expect(cache.files[0].stats.size).to.be.equal(size);
+          expect(cache.currentSize).to.be.equal(size);
 
-          return cache.get(filename).then(readStream => {
-            expect(readStream instanceof stream.Readable).to.be.equal(true);
+          return cache.get(filename).then(cached => {
+            expect(cached).to.have.property('stream');
+            expect(cached).to.have.property('size');
+            expect(cached).to.have.property('meta');
+            
+            expect(cached.stream instanceof stream.Readable).to.be.equal(true);
           });
+        });
+      });
+    });
+
+    it("should set a item with metadata", function() {
+      const cache = new Cache(CACHE_001);
+
+      const filename = __dirname + "/fixtures/file1.png";
+      const readStream = fs.createReadStream(filename);
+      const size = fs.statSync(filename).size;
+      const metadata = {foo: 'bar'};
+      const totalSize = size + Buffer(JSON.stringify(metadata)).length;
+
+      return cache.set(filename, readStream, size, metadata).then(function(cached) {
+        expect(cached).to.be.equal(true);
+        expect(cache.files).to.have.lengthOf(1);
+        expect(cache.files[0].stats.size).to.be.equal(totalSize);
+        expect(cache.currentSize).to.be.equal(totalSize);
+
+        return cache.get(filename).then(cached => {
+          expect(cached).to.have.property('stream');
+          expect(cached).to.have.property('size');
+          expect(cached).to.have.property('meta');
+          
+          expect(cached.stream instanceof stream.Readable).to.be.equal(true);
         });
       });
     });
@@ -69,7 +98,7 @@ describe("Cache", function() {
       const files = _.map(filenames.slice(0, 4), prepareInput);
       const size = _.reduce(files, (sum, file) => sum + file.size, 0);
 
-      const cache = new Cache(CACHE_001, { maxSize: size, ttl: 0 });
+      const cache = new Cache({ path: CACHE_001, maxSize: size, ttl: 0 });
 
       return cache.open().then(() => {
   
@@ -98,7 +127,7 @@ describe("Cache", function() {
       const files = _.map(filenames.slice(0, 2), prepareInput);
       const size = _.reduce(files, (sum, file) => sum + file.size, 0);
 
-      const cache = new Cache(CACHE_001, { maxSize: size, ttl: 0 });
+      const cache = new Cache({path: CACHE_001, maxSize: size, ttl: 0 });
 
       return cache.open().then(() => {
   
@@ -127,7 +156,7 @@ describe("Cache", function() {
       const files = _.map(filenames.slice(0, 3), prepareInput);
       const size = _.reduce(files, (sum, file) => sum + file.size, 0);
 
-      const cache = new Cache(CACHE_001, { maxSize: size, ttl: 1000 * 60});
+      const cache = new Cache({ path: CACHE_001, maxSize: size, ttl: 1000 * 60});
 
       return cache.open().then(() => {
   
